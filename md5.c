@@ -8,6 +8,7 @@
  */
 
 #include <string.h>
+#include "merkle.h"
 
 typedef unsigned int MD5_u32plus;
 
@@ -270,6 +271,6 @@ void hash_md5(merkle_hash_t input, merkle_hash_t output) {
     MD5_CTX my_md5;
 
     MD5_Init(&my_md5);
-    (void)MD5_Update(&my_md5, input, HASH_WIDTH);
+    (void)MD5_Update(&my_md5, input, 32);
     MD5_Final(output, &my_md5);
 }

@@ -68,6 +68,16 @@ void *array_pop(array_t *a) {
     return array_get(a, a->len-1);
 }
 
+/* Hashing */
+
+/* TODO: make hash width dynamic based on hashing algo
+    ... for now this is fine because we're using md5 only
+    Idea: set hash function/type on merkle init which will
+    determine both the hasing function and width of the hashes */
+typedef uint8_t merkle_hash_t[HASH_WIDTH];
+/* input is actually double width XXX make clearer */
+void hash_md5(merkle_hash_t input, merkle_hash_t output);
+
 /* Merkle Tree
     The merkle tree is an array of levels,
     each level is an array of hashes
@@ -75,12 +85,13 @@ void *array_pop(array_t *a) {
 
 #define MERKLE_INIT_LEVELS 16
 #define MERKLE_INIT_HASHES 16
-#define HASH_WIDTH 32
-typedef uint8_t merkle_hash_t[HASH_WIDTH];
 
 typedef struct merkle_t {
-    /* leaves are on levels[0], if levels[0].len > 1,
-    the leaves parents are on levels[1] and so on */
+    /* the bottom of the tree is levels[0], and the
+    parents of levels[0] are on levels[1] and so on ...
+    this implementation is kind of unusual in that all the
+    leaves are in levels[0] and if any node doesn't have a sibling
+    they are the parent of themselves */
     array_t levels;
 } merkle_t;
 
@@ -108,13 +119,16 @@ merkle_hash_t *merkle_root(merkle_t *m) {
     return array_get(array_get(m->levels, m->levels.len - 1), 0);
 }
 
-merkle_err_t merkle_add(merkle_t *m, merkle_hash_t *hash) {
+merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
     size_t level_idx = 0;
     int replace = 0;
+    merkle_hash_t hashcpy;
+
+    memcpy(hashcpy, hash, sizeof(hashcpy));
 
     do {
         array_t *level;
-        merkle_hash_t *_hash;
+        merkle_hash_t *node;
 
         if (m->levels.len == level_idx) {
             level = array_push(&m->levels);
@@ -122,7 +136,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t *hash) {
                 return MERKLE_ERROR;
             }
 
-            err = array_init(&level, MERKLE_INIT_HASHES, sizeof(*_hash))
+            err = array_init(&level, MERKLE_INIT_HASHES, sizeof(*node))
             if (err != MERKLE_OK) {
                 return err;
             }
@@ -130,12 +144,12 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t *hash) {
             level = array_get(&m->levels, level_idx);
         }
 
-        _hash = replace ? array_top(level) : array_push(level);
-        if (_hash == NULL) {
+        node = replace ? array_top(level) : array_push(level);
+        if (node == NULL) {
             return MERKLE_ERROR;
         }
 
-        memcpy(_hash, hash, sizeof(*hash));
+        memcpy(node, hashcpy, sizeof(*node));
 
         /* root level? */
         if (level->len == 1) {
@@ -143,12 +157,15 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t *hash) {
         }
 
         /* If we have an even number of hashes, replace top hash
-        of next level. If we have an odd we simply push on the hash. */
+        of next level. If we have an odd we simply push on the hash onto
+        the next level until it has a sibling */
         replace = level->len % 2 == 0;
         if (replace) {
-            hash = /* hash(hash||array_get(level, level->len-1)) */
-        } else {
-            hash = /* hash(hash) */
+            /* hash(array_get(level, level->len-2)||hash) this is
+                equivilant to treating array_get(level, level->len-2)
+                as double width given that its sibling is after it in
+                a contiguous array */
+            hash_md5(array_get(level, level->len-2), hashcpy)
         }
 
         level_idx++;

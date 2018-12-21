@@ -70,7 +70,7 @@ static inline uint32_t array_len(array_t *a) {
 #define MERKLE_INIT_LEVELS 16
 #define MERKLE_INIT_HASHES 16
 
-struct merkle {
+struct _merkle_t {
     /* the bottom of the tree is levels[0], and the
     parents of levels[0] are on levels[1] and so on ...
     this implementation is kind of unusual in that all the

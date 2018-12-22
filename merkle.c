@@ -146,9 +146,9 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
         the next level until it has a sibling */
         replace = level->len % 2 == 0;
         if (replace) {
-            /* hash(array_get(level, level->len-2)||hash) this is
+            /* hash(array_get(level, level->len-2)||hash) is
                 equivilant to treating array_get(level, level->len-2)
-                as double width given that its sibling is after it in
+                as double width given that the siblings reside in
                 a contiguous array */
             hash_md5(array_get(level, level->len-2), hashcpy);
         }

@@ -30,4 +30,7 @@ void merkle_deinit(merkle_t *m);
 merkle_hash_t *merkle_root(merkle_t *m);
 merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash);
 
+/* WIP proof and audit */
+merkle_hash_t *merkle_proof(merkle_t *m, uint32_t leaf_idx);
+
 #endif /* MERKLE_H */

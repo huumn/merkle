@@ -124,9 +124,9 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
             break;
         }
 
-        /* If we have an even number of hashes, replace top hash
-        of next level. If we have an odd we simply push on the hash onto
-        the next level until it has a sibling */
+        /* If we have an even number of hashes, replace top/last hash
+        of next level. If we have an odd number we simply push the hash onto
+        the next level. */
         replace = replace || array_len(level) % 2 == 0;
         if (array_len(level) % 2 == 0) {
             /* hash(array_get(level, array_len(level)-2)||hash) is
@@ -145,10 +145,8 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <math.h>
 
 void merkle_print(merkle_t *m, int print_width) {
-    char line[4096];
     struct winsize w;
     int midpoint;
 
@@ -161,8 +159,9 @@ void merkle_print(merkle_t *m, int print_width) {
         int indent = midpoint - (print_width/2)*(1 << (array_len(&m->levels)-i));
         array_t *level = array_get(&m->levels, i);
 
-        /* XXX inaccurate attempt to account for dividers */
-        indent -= log2(array_len(level));
+        if (i != array_len(&m->levels)-1) {
+            indent -= (1 << (array_len(&m->levels)-i-2)) - 1;
+        }
         if (indent < 0) indent = 0;
 
         printf("%*s", indent, "");

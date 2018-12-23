@@ -54,6 +54,7 @@ void merkle_deinit(merkle_t *m);
 merkle_hash_t *merkle_root(merkle_t *m);
 merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash);
 void merkle_print(merkle_t *m, int print_width);
+void merkle_print_hash(merkle_hash_t hash, int print_width);
 
 /* Merkle Proof */
 typedef struct merkle_proof_t {
@@ -69,6 +70,6 @@ void merkle_proof_deinit(merkle_proof_t *p);
 merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash);
 merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root,
     merkle_hash_t hash, int *valid);
-void merkle_proof_print(merkle_proof_t *p);
+void merkle_proof_print(merkle_proof_t *p, int print_width);
 
 #endif /* MERKLE_MERKLE_H */

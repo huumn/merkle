@@ -177,9 +177,17 @@ merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle
     return MERKLE_OK;
 }
 
+/* Printing */
+
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <unistd.h>
+
+void _print_hash(merkle_hash_t hash, int print_width) {
+    for (int i = 0; i < print_width; i++) {
+       printf("%02x", hash[i]);
+    }
+}
 
 void merkle_print(merkle_t *m, int print_width) {
     struct winsize w;
@@ -211,12 +219,21 @@ void merkle_print(merkle_t *m, int print_width) {
 
             if (j != 0) printf("|");
 
-            for (int i = 0; i < print_width; i++) {
-               printf("%02x", (*hash)[i]);
-            }
+            _print_hash(*hash, print_width);
         }
 
         printf("\n");
     }
+}
+
+void merkle_proof_print(merkle_proof_t *p) {
+    printf("=[");
+    for (int i = 0; i < array_len(&p->hashes); i++) {
+        _print_hash(*hash, HASH_WIDTH);
+        if (i != array_len(&p->hashes) - 1) {
+            printf(",");
+        }
+    }
+    printf("]\n");
 }
 

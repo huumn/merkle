@@ -112,7 +112,7 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
     merkle_hash_t *node;
     merkle_hash_t *p_hash;
 
-    if (array_len(m->levels) < 2) {
+    if (array_len(&m->levels) < 2) {
         return MERKLE_ERROR;
     }
 
@@ -167,13 +167,13 @@ uplevel:
 merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle_hash_t hash, int *valid) {
     merkle_hash_t result[2];
 
-    memcpy(&result[0], hash, sizeof(result[0]));
+    memcpy(result[0], hash, sizeof(*result[0]));
     for (int i = 0; i < array_len(&p->hashes); i++) {
-        memcpy(&result[1], array_get(&p->hashes[i]), sizeof(result[0]));
+        memcpy(result[1], array_get(&p->hashes, i), sizeof(*result[0]));
         hash_md5(result[0], result[0]);
     }
 
-    *valid = memcmp(result, root, HASH_WIDTH) == 0;
+    *valid = memcmp(result[0], root, HASH_WIDTH) == 0;
     return MERKLE_OK;
 }
 
@@ -183,7 +183,7 @@ merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle
 #include <stdio.h>
 #include <unistd.h>
 
-void _print_hash(merkle_hash_t hash, int print_width) {
+void merkle_print_hash(merkle_hash_t hash, int print_width) {
     for (int i = 0; i < print_width; i++) {
        printf("%02x", hash[i]);
     }
@@ -219,17 +219,19 @@ void merkle_print(merkle_t *m, int print_width) {
 
             if (j != 0) printf("|");
 
-            _print_hash(*hash, print_width);
+            merkle_print_hash(*hash, print_width);
         }
 
         printf("\n");
     }
 }
 
-void merkle_proof_print(merkle_proof_t *p) {
+void merkle_proof_print(merkle_proof_t *p, int print_width) {
     printf("=[");
     for (int i = 0; i < array_len(&p->hashes); i++) {
-        _print_hash(*hash, HASH_WIDTH);
+        merkle_hash_t *hash = array_get(&p->hashes, i);
+
+        merkle_print_hash(*hash, print_width);
         if (i != array_len(&p->hashes) - 1) {
             printf(",");
         }

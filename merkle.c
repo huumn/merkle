@@ -124,17 +124,17 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
             break;
         }
 
+        if (array_len(level) % 2 == 0) {
+            /* we treat array_get(level, array_len(level)-2) as double width
+                given that all siblings reside next to each other in a
+                contiguous array */
+            hash_md5(array_get(level, array_len(level)-2), hashcpy);
+        }
+
         /* If we have an even number of hashes, replace top/last hash
         of next level. If we have an odd number we simply push the hash onto
         the next level. */
         replace = replace || array_len(level) % 2 == 0;
-        if (array_len(level) % 2 == 0) {
-            /* hash(array_get(level, array_len(level)-2)||hash) is
-                equivilant to treating array_get(level, array_len(level)-2)
-                as double width given that the siblings reside in
-                a contiguous array */
-            hash_md5(array_get(level, array_len(level)-2), hashcpy);
-        }
 
         level_idx++;
     } while(1);
@@ -156,16 +156,20 @@ void merkle_print(merkle_t *m, int print_width) {
     printf("%*s%s\n", midpoint, "",".");
 
     for(int i = array_len(&m->levels)-1; i >= 0; i--) {
+        /* midpoint minus the max number of hashes in the level multiplied by
+            half their width */
         int indent = midpoint - (print_width/2)*(1 << (array_len(&m->levels)-i));
         array_t *level = array_get(&m->levels, i);
 
+        /* to account for the hash seperator, we need to reduce the indent
+            by the number of seperators that will appear to the left of the
+            midpoint, which is half the max number of hashes at the level */
         if (i != array_len(&m->levels)-1) {
             indent -= (1 << (array_len(&m->levels)-i-2)) - 1;
         }
         if (indent < 0) indent = 0;
 
         printf("%*s", indent, "");
-
 
         for(int j = 0; j < array_len(level); j++) {
             merkle_hash_t *hash = array_get(level, j);

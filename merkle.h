@@ -57,8 +57,12 @@ void merkle_print(merkle_t *m, int print_width);
 void merkle_print_hash(merkle_hash_t hash, int print_width);
 
 /* Merkle Proof */
+typedef struct merkle_proof_node_t {
+    uint32_t index;
+    merkle_hash_t hash;
+}
 typedef struct merkle_proof_t {
-    /* A proof is just list of hashes where
+    /* A proof is just list of merkle_proof_node_t(hash,idx) where
     the hash to be validated can be hashed with hashes[0]
     and that result is hashed with hashes[1], and that result
     with hashes[2] and so on ... such that the resulting hash

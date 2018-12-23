@@ -139,7 +139,7 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
                     we need to go up a level to find the "actual" leaf ...
                     see note in merkle_t about implementation ...
                     basically move up a level until we're at an odd index */
-                if (level_idx == 0) p->leaf_idx /= 2;
+                p->leaf_idx = (p->leaf_idx /2 ) + (p->leaf_idx % 2);
                 goto uplevel;
             }
 

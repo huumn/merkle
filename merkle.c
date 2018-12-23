@@ -94,7 +94,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
 merkle_err_t merkle_proof_init(merkle_proof_t *p) {
     merkle_err_t err;
 
-    err = array_init(&p->hashes, MERKLE_PROOF_INIT_HASHES, sizeof(merkle_hash_t));
+    err = array_init(&p->hashes, MERKLE_PROOF_INIT_HASHES, sizeof(merkle_node_t));
     if (err != MERKLE_OK) {
         return err;
     }
@@ -104,6 +104,16 @@ merkle_err_t merkle_proof_init(merkle_proof_t *p) {
 
 void merkle_proof_deinit(merkle_proof_t *p) {
     array_deinit(&p->hashes);
+}
+
+int _merkle_proof_find_leaf(array_t *leaves, merkle_hash_t hash) {
+    int i;
+    for (i = 0; i < array_len(leaves); i++) {
+        if(memcmp(hash, array_get(level, i), HASH_WIDTH) == 0) {
+            break;
+        }
+    }
+    return i;
 }
 
 merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
@@ -116,14 +126,10 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
         return MERKLE_ERROR;
     }
 
-    array_t *level = array_get(&m->levels, level_idx);
-    for (i = 0; i < array_len(level); i++) {
-        if(memcmp(hash, array_get(level, i), HASH_WIDTH) == 0) {
-            break;
-        }
-    }
+    array_t *level = array_get(&m->levels, 0);
+    i =  _merkle_proof_find_leaf(level, hash);
 
-    if (i == array_len(level)) {
+    if (i >= array_len(level)) {
         return MERKLE_NOTFOUND;
     }
 
@@ -164,12 +170,21 @@ uplevel:
     return MERKLE_OK;
 }
 
+/* XXXXXXX TODO ... NEEED to take into account whether the node is left or right */
 merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle_hash_t hash, int *valid) {
     merkle_hash_t result[2];
 
-    memcpy(result[0], hash, sizeof(*result[0]));
+    array_t *level = array_get(&m->levels, 0);
+    int i =  _merkle_proof_find_leaf(level, hash);
+
+    if (i >= array_len(level)) {
+        return MERKLE_NOTFOUND;
+    }
+
+    memcpy(result[i % 2], hash, sizeof(*result));
     for (int i = 0; i < array_len(&p->hashes); i++) {
-        memcpy(result[1], array_get(&p->hashes, i), sizeof(*result[0]));
+        merkle_proof_node_t *node = array_get(&p->hashes, i);
+        memcpy(result[], array_get(&p->hashes, i), sizeof(*result));
         hash_md5(result[0], result[0]);
     }
 

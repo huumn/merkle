@@ -128,7 +128,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
         of next level. If we have an odd we simply push on the hash onto
         the next level until it has a sibling */
         replace = replace || array_len(level) % 2 == 0;
-        if (replace) {
+        if (array_len(level) % 2 == 0) {
             /* hash(array_get(level, array_len(level)-2)||hash) is
                 equivilant to treating array_get(level, array_len(level)-2)
                 as double width given that the siblings reside in
@@ -161,7 +161,8 @@ void merkle_print(merkle_t *m, int print_width) {
         int indent = midpoint - (print_width/2)*(1 << (array_len(&m->levels)-i));
         array_t *level = array_get(&m->levels, i);
 
-        indent -= log2(array_len(level)); /* account for dividers */
+        /* XXX inaccurate attempt to account for dividers */
+        indent -= log2(array_len(level));
         if (indent < 0) indent = 0;
 
         printf("%*s", indent, "");

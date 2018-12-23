@@ -55,7 +55,18 @@ merkle_hash_t *merkle_root(merkle_t *m);
 merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash);
 void merkle_print(merkle_t *m, int print_width);
 
-/* WIP proof and audit? Is this how this should work? */
-merkle_hash_t *merkle_proof(merkle_t *m, uint32_t leaf_idx);
+/* Merkle Proof */
+typedef struct merkle_proof_t {
+    /* A proof is just list of hashes where
+    the hash to be validated can be hashed with hashes[0]
+    and that result is hashed with hashes[1], and that result
+    with hashes[2] and so on ... such that the resulting hash
+    is the root hash of its merkle tree */
+    array_t hashes;
+} merkle_proof_t;
+merkle_err_t merkle_proof_init(merkle_proof_t *p);
+void merkle_proof_deinit(merkle_proof_t *p);
+merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash);
+merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle_hash_t hash, int *valid);
 
 #endif /* MERKLE_MERKLE_H */

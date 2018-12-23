@@ -2,16 +2,8 @@
 
 /* Arrays */
 
-typedef struct array_t {
-    uint32_t len;
-    uint32_t cap;
-
-    size_t item_size;
-    void *items;
-} array_t;
-
 merkle_err_t array_init(array_t *a, uint32_t cap, size_t item_size) {
-    a->items = calloc(cap,  a->item_size);
+    a->items = calloc(cap,  item_size);
     if (a->items == NULL) {
         return MERKLE_ENOMEM;
     }
@@ -70,15 +62,6 @@ static inline uint32_t array_len(array_t *a) {
 #define MERKLE_INIT_LEVELS 16
 #define MERKLE_INIT_HASHES 16
 
-struct _merkle_t {
-    /* the bottom of the tree is levels[0], and the
-    parents of levels[0] are on levels[1] and so on ...
-    this implementation is kind of unusual in that all the
-    leaves are in levels[0] and if any node doesn't have a sibling
-    they are the parent of themselves */
-    array_t levels;
-};
-
 merkle_err_t merkle_init(merkle_t *m) {
     merkle_err_t err;
 
@@ -91,7 +74,7 @@ merkle_err_t merkle_init(merkle_t *m) {
 }
 
 void merkle_deinit(merkle_t *m) {
-    for (uint32_t i = 0; i < m->levels.len; i++) {
+    for (uint32_t i = 0; i < array_len(&m->levels); i++) {
         array_t *level = array_get(&m->levels, i);
         array_deinit(level);
     }
@@ -100,7 +83,7 @@ void merkle_deinit(merkle_t *m) {
 }
 
 merkle_hash_t *merkle_root(merkle_t *m) {
-    return array_get(array_get(&m->levels, m->levels.len - 1), 0);
+    return array_get(array_get(&m->levels, array_len(&m->levels) - 1), 0);
 }
 
 merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
@@ -115,7 +98,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
         array_t *level;
         merkle_hash_t *node;
 
-        if (m->levels.len == level_idx) {
+        if (array_len(&m->levels) == level_idx) {
             level = array_push(&m->levels);
             if (level == NULL) {
                 return MERKLE_ERROR;
@@ -129,7 +112,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
             level = array_get(&m->levels, level_idx);
         }
 
-        node = replace ? array_top(level) : array_push(level);
+        node = replace && array_len(level) > 0 ? array_top(level) : array_push(level);
         if (node == NULL) {
             return MERKLE_ERROR;
         }
@@ -137,25 +120,64 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
         memcpy(node, hashcpy, sizeof(*node));
 
         /* root level? */
-        if (level->len == 1) {
+        if (array_len(level) == 1) {
             break;
         }
 
         /* If we have an even number of hashes, replace top hash
         of next level. If we have an odd we simply push on the hash onto
         the next level until it has a sibling */
-        replace = level->len % 2 == 0;
+        replace = replace || array_len(level) % 2 == 0;
         if (replace) {
-            /* hash(array_get(level, level->len-2)||hash) is
-                equivilant to treating array_get(level, level->len-2)
+            /* hash(array_get(level, array_len(level)-2)||hash) is
+                equivilant to treating array_get(level, array_len(level)-2)
                 as double width given that the siblings reside in
                 a contiguous array */
-            hash_md5(array_get(level, level->len-2), hashcpy);
+            hash_md5(array_get(level, array_len(level)-2), hashcpy);
         }
 
         level_idx++;
     } while(1);
 
     return MERKLE_OK;
+}
+
+#include <sys/ioctl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <math.h>
+
+void merkle_print(merkle_t *m, int print_width) {
+    char line[4096];
+    struct winsize w;
+    int midpoint;
+
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    midpoint =  w.ws_col/2;
+
+    printf("%*s%s\n", midpoint, "",".");
+
+    for(int i = array_len(&m->levels)-1; i >= 0; i--) {
+        int indent = midpoint - (print_width/2)*(1 << (array_len(&m->levels)-i));
+        array_t *level = array_get(&m->levels, i);
+
+        indent -= log2(array_len(level)); /* account for dividers */
+        if (indent < 0) indent = 0;
+
+        printf("%*s", indent, "");
+
+
+        for(int j = 0; j < array_len(level); j++) {
+            merkle_hash_t *hash = array_get(level, j);
+
+            if (j != 0) printf("|");
+
+            for (int i = 0; i < print_width; i++) {
+               printf("%02x", (*hash)[i]);
+            }
+        }
+
+        printf("\n");
+    }
 }
 

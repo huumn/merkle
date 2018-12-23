@@ -94,26 +94,17 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
 merkle_err_t merkle_proof_init(merkle_proof_t *p) {
     merkle_err_t err;
 
-    err = array_init(&p->hashes, MERKLE_PROOF_INIT_HASHES, sizeof(merkle_node_t));
+    err = array_init(&p->hashes, MERKLE_PROOF_INIT_HASHES, sizeof(merkle_hash_t));
     if (err != MERKLE_OK) {
         return err;
     }
+    p->leaf_idx = 0;
 
     return MERKLE_OK;
 }
 
 void merkle_proof_deinit(merkle_proof_t *p) {
     array_deinit(&p->hashes);
-}
-
-int _merkle_proof_find_leaf(array_t *leaves, merkle_hash_t hash) {
-    int i;
-    for (i = 0; i < array_len(leaves); i++) {
-        if(memcmp(hash, array_get(level, i), HASH_WIDTH) == 0) {
-            break;
-        }
-    }
-    return i;
 }
 
 merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
@@ -127,11 +118,17 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
     }
 
     array_t *level = array_get(&m->levels, 0);
-    i =  _merkle_proof_find_leaf(level, hash);
+    for (i = 0; i < array_len(level); i++) {
+        if(memcmp(hash, array_get(level, i), HASH_WIDTH) == 0) {
+            break;
+        }
+    }
 
     if (i >= array_len(level)) {
         return MERKLE_NOTFOUND;
     }
+
+    p->leaf_idx = i;
 
     do {
         /* if i is even, sibling is on right
@@ -170,22 +167,19 @@ uplevel:
     return MERKLE_OK;
 }
 
-/* XXXXXXX TODO ... NEEED to take into account whether the node is left or right */
 merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle_hash_t hash, int *valid) {
     merkle_hash_t result[2];
+    int node_idx = p->leaf_idx;
 
-    array_t *level = array_get(&m->levels, 0);
-    int i =  _merkle_proof_find_leaf(level, hash);
+    memcpy(result[node_idx % 2], hash, sizeof(*result));
 
-    if (i >= array_len(level)) {
-        return MERKLE_NOTFOUND;
-    }
-
-    memcpy(result[i % 2], hash, sizeof(*result));
     for (int i = 0; i < array_len(&p->hashes); i++) {
-        merkle_proof_node_t *node = array_get(&p->hashes, i);
-        memcpy(result[], array_get(&p->hashes, i), sizeof(*result));
-        hash_md5(result[0], result[0]);
+        /* siblings are on the opposite side so node_idx + 1 */
+        memcpy(result[(node_idx + 1) % 2], array_get(&p->hashes, i), sizeof(*result));
+
+        /* parent is the node_idx/2 so update as we go so we know which side it's on */
+        node_idx /= 2;
+        hash_md5(result[0], result[node_idx % 2]);
     }
 
     *valid = memcmp(result[0], root, HASH_WIDTH) == 0;

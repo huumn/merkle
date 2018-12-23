@@ -43,19 +43,20 @@ int main() {
     for (int i = 0; i < sizeof(hash) / sizeof(hash[1]); i++) {
         merkle_add(&m, hash[i]);
         merkle_print(&m, 4);
-    }
-    for (int i = 0; i < sizeof(hash) / sizeof(hash[1]); i++) {
-        int valid;
-        merkle_proof_t p;
-        merkle_proof_init(&p);
-        merkle_proof(&p, &m, hash[i]);
-        printf("Proof for ");
-        merkle_print_hash(hash[i], 4);
-        merkle_proof_validate(&p, *merkle_root(&m), hash[i], &valid);
-        printf(valid ? " (VALID) " : " (INVALID) ");
-        printf("=");
-        merkle_proof_print(&p, 4);
-        merkle_proof_deinit(&p);
+
+        for (int j = 0; j <= i; j++) {
+            int valid;
+            merkle_proof_t p;
+            merkle_proof_init(&p);
+            merkle_proof(&p, &m, hash[j]);
+            printf("Proof for ");
+            merkle_print_hash(hash[j], 4);
+            merkle_proof_validate(&p, *merkle_root(&m), hash[j], &valid);
+            printf(valid ? " (VALID) " : " (INVALID) ");
+            printf("=");
+            merkle_proof_print(&p, 4);
+            merkle_proof_deinit(&p);
+        }
     }
     merkle_deinit(&m);
 }

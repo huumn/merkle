@@ -89,6 +89,94 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
     return MERKLE_OK;
 }
 
+#define MERKLE_PROOF_INIT_HASHES 4
+
+merkle_err_t merkle_proof_init(merkle_proof_t *p) {
+    merkle_err_t err;
+
+    err = array_init(&p->hashes, MERKLE_PROOF_INIT_HASHES, sizeof(merkle_hash_t));
+    if (err != MERKLE_OK) {
+        return err;
+    }
+
+    return MERKLE_OK;
+}
+
+void merkle_proof_deinit(merkle_proof_t *p) {
+    array_deinit(&p->hashes);
+}
+
+merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
+    int i;
+    int level_idx = 0;
+    merkle_hash_t *node;
+    merkle_hash_t *p_hash;
+
+    if (array_len(m->levels) < 2) {
+        return MERKLE_ERROR;
+    }
+
+    array_t *level = array_get(&m->levels, level_idx);
+    for (i = 0; i < array_len(level); i++) {
+        if(memcmp(hash, array_get(level, i), HASH_WIDTH) == 0) {
+            break;
+        }
+    }
+
+    if (i == array_len(level)) {
+        return MERKLE_NOTFOUND;
+    }
+
+    do {
+        /* if i is even, sibling is on right
+           if odd, sibling is on left */
+        if(i % 2 == 0) {
+            if (i == array_len(level) - 1) {
+                /* this is the last leaf in a row with odd nodes (even idx),
+                    we need to go up a level to find the "actual" leaf ...
+                    see note in merkle_t about implementation ...
+                    basically move up a level until we're at an odd index */
+                goto uplevel;
+            }
+
+            node = array_get(level, i+1);
+        } else {
+            node = array_get(level, i-1);
+        }
+
+        if (node == NULL) {
+            return MERKLE_ERROR;
+        }
+
+        p_hash = array_push(&p->hashes);
+        if (p_hash == NULL) {
+            return MERKLE_ERROR;
+        }
+        memcpy(p_hash, node, sizeof(*p_hash));
+
+uplevel:
+        /* parent is floor(i/2) */
+        i = i / 2;
+        level_idx++;
+        level = array_get(&m->levels, level_idx);
+    } while(array_len(level) != 1);
+
+    return MERKLE_OK;
+}
+
+merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle_hash_t hash, int *valid) {
+    merkle_hash_t result[2];
+
+    memcpy(&result[0], hash, sizeof(result[0]));
+    for (int i = 0; i < array_len(&p->hashes); i++) {
+        memcpy(&result[1], array_get(&p->hashes[i]), sizeof(result[0]));
+        hash_md5(result[0], result[0]);
+    }
+
+    *valid = memcmp(result, root, HASH_WIDTH) == 0;
+    return MERKLE_OK;
+}
+
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <unistd.h>

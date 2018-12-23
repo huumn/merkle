@@ -1,8 +1,7 @@
-#ifndef MERKLE_H
-#define MERKLE_H
+#ifndef MERKLE_MERKLE_H
+#define MERKLE_MERKLE_H
 
 #include <stdlib.h>
-#include <string.h>
 
 /* Errors */
 typedef enum merkle_err_t {
@@ -11,6 +10,24 @@ typedef enum merkle_err_t {
     MERKLE_ENOMEM,
     MERKLE_NOTFOUND,
 } merkle_err_t;
+
+/* Arrays */
+typedef struct array_t {
+    uint32_t len;
+    uint32_t cap;
+
+    size_t item_size;
+    void *items;
+} array_t;
+
+merkle_err_t array_init(array_t *a, uint32_t cap, size_t item_size);
+void array_deinit(array_t *a);
+void *array_push(array_t *a);
+void *array_get(array_t *a, uint32_t idx);
+void *array_top(array_t *a);
+static inline uint32_t array_len(array_t *a) {
+    return a->len;
+}
 
 /* Hashing
     TODO:
@@ -22,17 +39,6 @@ typedef enum merkle_err_t {
 #define HASH_WIDTH 16
 typedef uint8_t merkle_hash_t[HASH_WIDTH];
 void hash_md5(merkle_hash_t input, merkle_hash_t output);
-
-/* TODO: I'd prefer these impls to be hidden ... even if they
-don't need to be */
-/* Arrays */
-typedef struct array_t {
-    uint32_t len;
-    uint32_t cap;
-
-    size_t item_size;
-    void *items;
-} array_t;
 
 /* Merkle Tree */
 typedef struct merkle_t {
@@ -52,4 +58,4 @@ void merkle_print(merkle_t *m, int print_width);
 /* WIP proof and audit? Is this how this should work? */
 merkle_hash_t *merkle_proof(merkle_t *m, uint32_t leaf_idx);
 
-#endif /* MERKLE_H */
+#endif /* MERKLE_MERKLE_H */

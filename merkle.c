@@ -98,13 +98,17 @@ merkle_err_t merkle_proof_init(merkle_proof_t *p) {
     if (err != MERKLE_OK) {
         return err;
     }
-    p->leaf_idx = 0;
+    err = array_init(&p->pos, MERKLE_PROOF_INIT_HASHES, sizeof(int));
+    if (err != MERKLE_OK) {
+        return err;
+    }
 
     return MERKLE_OK;
 }
 
 void merkle_proof_deinit(merkle_proof_t *p) {
     array_deinit(&p->hashes);
+    array_deinit(&p->pos);
 }
 
 merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
@@ -112,6 +116,7 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
     int level_idx = 0;
     merkle_hash_t *node;
     merkle_hash_t *p_hash;
+    int *pos;
 
     if (array_len(&m->levels) < 2) {
         return MERKLE_ERROR;
@@ -128,8 +133,6 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
         return MERKLE_NOTFOUND;
     }
 
-    p->leaf_idx = i;
-
     do {
         /* if i is even, sibling is on right
            if odd, sibling is on left */
@@ -138,8 +141,7 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
                 /* this is the last leaf in a row with odd nodes (even idx),
                     we need to go up a level to find the "actual" leaf ...
                     see note in merkle_t about implementation ...
-                    basically move up a level until we're at an odd index */
-                p->leaf_idx = (p->leaf_idx /2 ) + (p->leaf_idx % 2);
+                    basically move up a level until we're at an odd index  */
                 goto uplevel;
             }
 
@@ -153,10 +155,12 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
         }
 
         p_hash = array_push(&p->hashes);
-        if (p_hash == NULL) {
+        pos = array_push(&p->pos);
+        if (p_hash == NULL || pos == NULL) {
             return MERKLE_ERROR;
         }
         memcpy(p_hash, node, sizeof(*p_hash));
+        *pos = i % 2 == 0;
 
 uplevel:
         /* parent is floor(i/2) */
@@ -170,17 +174,25 @@ uplevel:
 
 merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle_hash_t hash, int *valid) {
     merkle_hash_t result[2];
-    int node_idx = p->leaf_idx;
+    int *pos, *lastpos;
 
-    memcpy(result[node_idx % 2], hash, sizeof(*result));
+    if (array_len(&p->hashes) < 1) {
+        memcpy(result[0], hash, sizeof(*result));
+    } else {
+        pos = array_get(&p->pos, 0);
+        memcpy(result[*pos ? 0 : 1], hash, sizeof(*result));
+    }
 
     for (int i = 0; i < array_len(&p->hashes); i++) {
-        /* siblings are on the opposite side so node_idx + 1 */
-        memcpy(result[(node_idx + 1) % 2], array_get(&p->hashes, i), sizeof(*result));
+        pos = array_get(&p->pos, i);
+        memcpy(result[*pos], array_get(&p->hashes, i), sizeof(*result));
 
-        /* parent is the node_idx/2 so update as we go so we know which side it's on */
-        node_idx /= 2;
-        hash_md5(result[0], result[node_idx % 2]);
+        if (i < array_len(&p->hashes) - 1){
+            pos = array_get(&p->pos, i+1);
+            hash_md5(result[0], result[*pos ? 0 : 1]);
+        } else {
+            hash_md5(result[0], result[0]);
+        }
     }
 
     *valid = memcmp(result[0], root, HASH_WIDTH) == 0;

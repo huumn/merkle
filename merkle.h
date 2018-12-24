@@ -64,7 +64,7 @@ typedef struct merkle_proof_t {
     with hashes[2] and so on ... such that the resulting hash
     is the root hash of its merkle tree ... leaf_idx tells
     us the starting concantenation order as we move to the root */
-    uint32_t leaf_idx;
+    array_t pos;
     array_t hashes;
 } merkle_proof_t;
 merkle_err_t merkle_proof_init(merkle_proof_t *p);

@@ -155,11 +155,15 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
         }
 
         p_hash = array_push(&p->hashes);
-        pos = array_push(&p->pos);
-        if (p_hash == NULL || pos == NULL) {
+        if (p_hash == NULL) {
             return MERKLE_ERROR;
         }
         memcpy(p_hash, node, sizeof(*p_hash));
+
+        pos = array_push(&p->pos);
+        if (pos == NULL) {
+            return MERKLE_ERROR;
+        }
         *pos = i % 2 == 0;
 
 uplevel:

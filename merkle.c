@@ -9,13 +9,36 @@
 #define MERKLE_INIT_LEVELS 16
 #define MERKLE_INIT_HASHES 16
 
-merkle_err_t merkle_init(merkle_t *m) {
+uint32_t get_cipher_width(cipher_e c) {
+    #define CIPHER_WIDTHS(_name, _width) _width,
+    uint32_t cipher_widths[] = {
+        CIPHER_CODEC( CIPHER_WIDTHS )
+    };
+    #undef CIPHER_WIDTHS
+
+    return cipher_widths[c];
+}
+
+static cipher_func get_cipher_func(cipher_e c) {
+    #define CIPHER_FUNCS(_name, _width) &hash_##_name,
+    cipher_func cipher_funcs[] = {
+        CIPHER_CODEC( CIPHER_FUNCS )
+    };
+    #undef CIPHER_FUNCS
+
+    return cipher_funcs[c];
+}
+
+merkle_err_t merkle_init(merkle_t *m, cipher_e c) {
     merkle_err_t err;
 
     err = array_init(&m->levels, MERKLE_INIT_LEVELS, sizeof(array_t));
     if (err != MERKLE_OK) {
         return err;
     }
+
+    m->hash_width = get_cipher_width(c);
+    m->hash_func = get_cipher_func(c);
 
     return MERKLE_OK;
 }
@@ -29,17 +52,17 @@ void merkle_deinit(merkle_t *m) {
     array_deinit(&m->levels);
 }
 
-merkle_hash_t *merkle_root(merkle_t *m) {
+merkle_hash_t merkle_root(merkle_t *m) {
     return array_get(array_get(&m->levels, array_len(&m->levels) - 1), 0);
 }
 
 merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
-    merkle_hash_t hashcpy;
     merkle_err_t err;
+    uint8_t hashcpy[m->hash_width];
     size_t level_idx = 0;
     int replace = 0;
 
-    memcpy(hashcpy, hash, sizeof(hashcpy));
+    memcpy(hashcpy, hash, m->hash_width);
 
     do {
         array_t *level;
@@ -51,7 +74,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
                 return MERKLE_ERROR;
             }
 
-            err = array_init(level, MERKLE_INIT_HASHES, sizeof(*node));
+            err = array_init(level, MERKLE_INIT_HASHES, m->hash_width);
             if (err != MERKLE_OK) {
                 return err;
             }
@@ -64,7 +87,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
             return MERKLE_ERROR;
         }
 
-        memcpy(node, hashcpy, sizeof(*node));
+        memcpy(node, hashcpy, m->hash_width);
 
         /* root level? */
         if (array_len(level) == 1) {
@@ -75,7 +98,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
             /* we treat array_get(level, array_len(level)-2) as double width
                 given that all siblings reside next to each other in a
                 contiguous array */
-            hash_md5(array_get(level, array_len(level)-2), hashcpy);
+            m->hash_func(array_get(level, array_len(level)-2), hashcpy);
         }
 
         /* If we have an even number of hashes, replace top/last hash
@@ -91,17 +114,21 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
 
 #define MERKLE_PROOF_INIT_HASHES 4
 
-merkle_err_t merkle_proof_init(merkle_proof_t *p) {
+merkle_err_t merkle_proof_init(merkle_proof_t *p, cipher_e c) {
     merkle_err_t err;
 
-    err = array_init(&p->hashes, MERKLE_PROOF_INIT_HASHES, sizeof(merkle_hash_t));
+    err = array_init(&p->hashes, MERKLE_PROOF_INIT_HASHES, p->hash_width);
     if (err != MERKLE_OK) {
         return err;
     }
+
     err = array_init(&p->pos, MERKLE_PROOF_INIT_HASHES, sizeof(int));
     if (err != MERKLE_OK) {
         return err;
     }
+
+    p->hash_width = get_cipher_width(c);
+    p->hash_func = get_cipher_func(c);
 
     return MERKLE_OK;
 }
@@ -114,8 +141,8 @@ void merkle_proof_deinit(merkle_proof_t *p) {
 merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
     int i;
     int level_idx = 0;
-    merkle_hash_t *node;
-    merkle_hash_t *p_hash;
+    merkle_hash_t node;
+    merkle_hash_t p_hash;
     int *pos;
 
     if (array_len(&m->levels) < 2) {
@@ -124,7 +151,7 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
 
     array_t *level = array_get(&m->levels, 0);
     for (i = 0; i < array_len(level); i++) {
-        if(memcmp(hash, array_get(level, i), HASH_WIDTH) == 0) {
+        if(memcmp(hash, array_get(level, i), p->hash_width) == 0) {
             break;
         }
     }
@@ -158,7 +185,7 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
         if (p_hash == NULL) {
             return MERKLE_ERROR;
         }
-        memcpy(p_hash, node, sizeof(*p_hash));
+        memcpy(p_hash, node, p->hash_width);
 
         pos = array_push(&p->pos);
         if (pos == NULL) {
@@ -176,30 +203,36 @@ uplevel:
     return MERKLE_OK;
 }
 
+/* TODO: cleanup */
 merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle_hash_t hash, int *valid) {
-    merkle_hash_t result[2];
-    int *pos, *lastpos;
+    int *pos;
+    int *lastpos;
+    int left_right;
+    uint8_t result[p->hash_width*2];
 
     if (array_len(&p->hashes) < 1) {
-        memcpy(result[0], hash, sizeof(*result));
+        left_right = 0;
     } else {
         pos = array_get(&p->pos, 0);
-        memcpy(result[*pos ? 0 : 1], hash, sizeof(*result));
+        left_right = *pos ? 0 : 1;
     }
+    memcpy(result+(left_right*p->hash_width), hash, p->hash_width);
+
 
     for (int i = 0; i < array_len(&p->hashes); i++) {
         pos = array_get(&p->pos, i);
-        memcpy(result[*pos], array_get(&p->hashes, i), sizeof(*result));
+        memcpy(result+((*pos)*p->hash_width), array_get(&p->hashes, i), p->hash_width);
 
+        left_right = 0;
         if (i < array_len(&p->hashes) - 1){
             pos = array_get(&p->pos, i+1);
-            hash_md5(result[0], result[*pos ? 0 : 1]);
-        } else {
-            hash_md5(result[0], result[0]);
+            left_right = *pos ? 0 : 1;
         }
+
+        p->hash_func(result, result+(left_right*p->hash_width));
     }
 
-    *valid = memcmp(result[0], root, HASH_WIDTH) == 0;
+    *valid = memcmp(result, root, p->hash_width) == 0;
     return MERKLE_OK;
 }
 
@@ -241,11 +274,11 @@ void merkle_print(merkle_t *m, int print_width) {
         printf("%*s", indent, "");
 
         for(int j = 0; j < array_len(level); j++) {
-            merkle_hash_t *hash = array_get(level, j);
+            merkle_hash_t hash = array_get(level, j);
 
             if (j != 0) printf("|");
 
-            merkle_print_hash(*hash, print_width);
+            merkle_print_hash(hash, print_width);
         }
 
         printf("\n");
@@ -255,9 +288,9 @@ void merkle_print(merkle_t *m, int print_width) {
 void merkle_proof_print(merkle_proof_t *p, int print_width) {
     printf("=[");
     for (int i = 0; i < array_len(&p->hashes); i++) {
-        merkle_hash_t *hash = array_get(&p->hashes, i);
+        merkle_hash_t hash = array_get(&p->hashes, i);
 
-        merkle_print_hash(*hash, print_width);
+        merkle_print_hash(hash, print_width);
         if (i != array_len(&p->hashes) - 1) {
             printf(",");
         }

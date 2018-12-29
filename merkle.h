@@ -31,9 +31,6 @@ static inline uint32_t array_len(array_t *a) {
 
 /* Hashing
     TODO:
-    1. set hash function/type on merkle init which will
-    determine both the hashing function and width of the hashes
-    2. wrappers around all openssl impls once we're linked
     3. make it clearer that input is actually double width hash_t
 */
 typedef uint8_t *merkle_hash_t;
@@ -57,7 +54,6 @@ typedef enum cipher_e {
 } cipher_e;
 #undef CIPHER_ENUM
 
-/* XXX Can we define this as cipher_func hash_##name? */
 #define CIPHER_FUNC(_name, _width) void hash_##_name(merkle_hash_t, merkle_hash_t);
 CIPHER_CODEC(CIPHER_FUNC)
 #undef CIPHER_FUNC

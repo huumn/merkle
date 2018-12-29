@@ -49,6 +49,7 @@ typedef void (*cipher_func)(merkle_hash_t, merkle_hash_t);
 */
 #define CIPHER_CODEC(ACTION) \
     ACTION( MD5, 16 )        \
+    ACTION( SHA256, 32 )     \
 
 #define CIPHER_ENUM(_name, _width) CIPHER_##_name,
 typedef enum cipher_e {

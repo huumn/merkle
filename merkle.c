@@ -204,7 +204,8 @@ uplevel:
 }
 
 /* TODO: cleanup */
-merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root, merkle_hash_t hash, int *valid) {
+merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root,
+    merkle_hash_t hash, int *valid) {
     int *pos;
     int *lastpos;
     int left_right;

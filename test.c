@@ -73,7 +73,7 @@ int main() {
 
     merkle_t m;
     merkle_init(&m, CIPHER_MD5);
-    for (int i = 0; i < sizeof(hash) / sizeof(hash[1]); i++) {
+    for (int i = 0; i < sizeof(hash) / sizeof(hash[0]); i++) {
         merkle_add(&m, hash[i]);
         merkle_print(&m, 2);
 

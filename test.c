@@ -2,12 +2,13 @@
 #include <string.h>
 #include "merkle.h"
 
+#define PRINT_WIDTH 2
 void test_cipher(merkle_hash_t hash, cipher_e c, uint32_t width) {
     merkle_t m;
     merkle_init(&m, c);
-    for (int i = 0; i < 32*8; i += width) {
+    for (int i = 0; i < strlen((const char *)hash); i += width) {
         merkle_add(&m, &hash[i]);
-        merkle_print(&m, 2);
+        merkle_print(&m, PRINT_WIDTH);
 
         for (int j = 0; j <= i; j+=width) {
             int valid;
@@ -15,11 +16,11 @@ void test_cipher(merkle_hash_t hash, cipher_e c, uint32_t width) {
             merkle_proof_init(&p, c);
             merkle_proof(&p, &m, &hash[j]);
             printf("Proof for ");
-            merkle_print_hash(&hash[j], 2);
+            merkle_print_hash(&hash[j], PRINT_WIDTH);
             merkle_proof_validate(&p, merkle_root(&m), &hash[j], &valid);
             printf(valid ? " (VALID) " : " (INVALID) ");
             printf("=");
-            merkle_proof_print(&p, 2);
+            merkle_proof_print(&p, PRINT_WIDTH);
             merkle_proof_deinit(&p);
         }
     }

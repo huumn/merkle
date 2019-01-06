@@ -32,29 +32,29 @@ static inline uint32_t array_len(array_t *a) {
 /* Hashing
 */
 typedef uint8_t *merkle_hash_t;
-typedef void (*cipher_func)(merkle_hash_t, merkle_hash_t);
+typedef void (*hash_func)(merkle_hash_t, merkle_hash_t);
 
-/* To add a new cipher, add an ACTION(<cipher name>, <width>) below.
+/* To add a new hash, add an ACTION(<hash name>, <width>) below.
     This (1) declares a function
-        'void hash_<cipher name>(merkle_hash_t in, merkle_hash_t out)'
+        'void hash_<hash name>(merkle_hash_t in, merkle_hash_t out)'
         where 'in' is a double width merkle_hash_t (2*<width>) and out
         is just <width>
-    (2) defines an enum in cipher_e
-        'CIPHER_<cipher name>'
+    (2) defines an enum in hash_e
+        'HASH_<hash name>'
 */
-#define CIPHER_CODEC(ACTION) \
+#define HASH_CODEC(ACTION)   \
     ACTION( MD5, 16 )        \
     ACTION( SHA256, 32 )     \
 
-#define CIPHER_ENUM(_name, _width) CIPHER_##_name,
-typedef enum cipher_e {
-    CIPHER_CODEC(CIPHER_ENUM)
-} cipher_e;
-#undef CIPHER_ENUM
+#define HASH_ENUM(_name, _width) HASH_##_name,
+typedef enum hash_e {
+    HASH_CODEC(HASH_ENUM)
+} hash_e;
+#undef HASH_ENUM
 
-#define CIPHER_FUNC(_name, _width) void hash_##_name(merkle_hash_t, merkle_hash_t);
-CIPHER_CODEC(CIPHER_FUNC)
-#undef CIPHER_FUNC
+#define HASH_FUNC(_name, _width) void hash_##_name(merkle_hash_t, merkle_hash_t);
+HASH_CODEC(HASH_FUNC)
+#undef HASH_FUNC
 
 /* Merkle Tree */
 typedef struct merkle_t {
@@ -65,11 +65,10 @@ typedef struct merkle_t {
     they are the parent of themselves */
     array_t levels;
 
-    /* XXX abstract these out into a struct ?*/
-    cipher_func hash_func;
+    hash_func hash_func;
     uint32_t hash_width;
 } merkle_t;
-merkle_err_t merkle_init(merkle_t *m, cipher_e c);
+merkle_err_t merkle_init(merkle_t *m, hash_e c);
 void merkle_deinit(merkle_t *m);
 merkle_hash_t merkle_root(merkle_t *m);
 merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash);
@@ -87,10 +86,10 @@ typedef struct merkle_proof_t {
     array_t left_right;
     array_t hashes;
 
-    cipher_func hash_func;
+    hash_func hash_func;
     uint32_t hash_width;
 } merkle_proof_t;
-merkle_err_t merkle_proof_init(merkle_proof_t *p, cipher_e c);
+merkle_err_t merkle_proof_init(merkle_proof_t *p, hash_e c);
 void merkle_proof_deinit(merkle_proof_t *p);
 merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash);
 merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root,

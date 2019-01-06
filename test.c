@@ -3,7 +3,7 @@
 #include "merkle.h"
 
 #define PRINT_WIDTH 2
-void test_cipher(merkle_hash_t hash, cipher_e c, uint32_t width) {
+void test_hash(merkle_hash_t hash, hash_e c, uint32_t width) {
     merkle_t m;
     merkle_init(&m, c);
     for (int i = 0; i < strlen((const char *)hash); i += width) {
@@ -40,7 +40,7 @@ int main() {
                          ";];[]p-=3424r3rjwqijifjvhsvhsduu"
                          "!@#$WGREWGR$%#%% #$%$agrewgewgew";
 
-    #define TEST_CIPHER(_name, _width) test_cipher(hash, CIPHER_##_name, _width);
-    CIPHER_CODEC( TEST_CIPHER )
-    #undef TEST_CIPHER
+    #define TEST_HASH(_name, _width) test_hash(hash, HASH_##_name, _width);
+    HASH_CODEC( TEST_HASH )
+    #undef TEST_HASH
 }

@@ -9,27 +9,27 @@
 #define MERKLE_INIT_LEVELS 16
 #define MERKLE_INIT_HASHES 16
 
-uint32_t get_cipher_width(cipher_e c) {
-    #define CIPHER_WIDTHS(_name, _width) _width,
-    uint32_t cipher_widths[] = {
-        CIPHER_CODEC( CIPHER_WIDTHS )
+uint32_t get_hash_width(hash_e c) {
+    #define HASH_WIDTHS(_name, _width) _width,
+    uint32_t hash_widths[] = {
+        HASH_CODEC( HASH_WIDTHS )
     };
-    #undef CIPHER_WIDTHS
+    #undef HASH_WIDTHS
 
-    return cipher_widths[c];
+    return hash_widths[c];
 }
 
-static cipher_func get_cipher_func(cipher_e c) {
-    #define CIPHER_FUNCS(_name, _width) &hash_##_name,
-    cipher_func cipher_funcs[] = {
-        CIPHER_CODEC( CIPHER_FUNCS )
+static hash_func get_hash_func(hash_e c) {
+    #define HASH_FUNCS(_name, _width) &hash_##_name,
+    hash_func hash_funcs[] = {
+        HASH_CODEC( HASH_FUNCS )
     };
-    #undef CIPHER_FUNCS
+    #undef HASH_FUNCS
 
-    return cipher_funcs[c];
+    return hash_funcs[c];
 }
 
-merkle_err_t merkle_init(merkle_t *m, cipher_e c) {
+merkle_err_t merkle_init(merkle_t *m, hash_e c) {
     merkle_err_t err;
 
     err = array_init(&m->levels, MERKLE_INIT_LEVELS, sizeof(array_t));
@@ -37,8 +37,8 @@ merkle_err_t merkle_init(merkle_t *m, cipher_e c) {
         return err;
     }
 
-    m->hash_width = get_cipher_width(c);
-    m->hash_func = get_cipher_func(c);
+    m->hash_width = get_hash_width(c);
+    m->hash_func = get_hash_func(c);
 
     return MERKLE_OK;
 }
@@ -114,7 +114,7 @@ merkle_err_t merkle_add(merkle_t *m, merkle_hash_t hash) {
 
 #define MERKLE_PROOF_INIT_HASHES 4
 
-merkle_err_t merkle_proof_init(merkle_proof_t *p, cipher_e c) {
+merkle_err_t merkle_proof_init(merkle_proof_t *p, hash_e c) {
     merkle_err_t err;
 
     err = array_init(&p->hashes, MERKLE_PROOF_INIT_HASHES, p->hash_width);
@@ -127,8 +127,8 @@ merkle_err_t merkle_proof_init(merkle_proof_t *p, cipher_e c) {
         return err;
     }
 
-    p->hash_width = get_cipher_width(c);
-    p->hash_func = get_cipher_func(c);
+    p->hash_width = get_hash_width(c);
+    p->hash_func = get_hash_func(c);
 
     return MERKLE_OK;
 }

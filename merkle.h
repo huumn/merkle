@@ -30,8 +30,6 @@ static inline uint32_t array_len(array_t *a) {
 }
 
 /* Hashing
-    TODO:
-    3. make it clearer that input is actually double width hash_t
 */
 typedef uint8_t *merkle_hash_t;
 typedef void (*cipher_func)(merkle_hash_t, merkle_hash_t);
@@ -84,10 +82,9 @@ typedef struct merkle_proof_t {
     the hash to be validated can be hashed with hashes[0]
     and that result is hashed with hashes[1], and that result
     with hashes[2] and so on ... such that the resulting hash
-    is the root hash of its merkle tree ... leaf_idx tells
-    us the starting concantenation order as we move to the root */
-    /* TODO: rename left_right */
-    array_t pos;
+    is the root hash of its merkle tree ... left_right tells
+    us the concantenation order as we move to the root */
+    array_t left_right;
     array_t hashes;
 
     cipher_func hash_func;

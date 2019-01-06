@@ -122,7 +122,7 @@ merkle_err_t merkle_proof_init(merkle_proof_t *p, cipher_e c) {
         return err;
     }
 
-    err = array_init(&p->pos, MERKLE_PROOF_INIT_HASHES, sizeof(int));
+    err = array_init(&p->left_right, MERKLE_PROOF_INIT_HASHES, sizeof(int));
     if (err != MERKLE_OK) {
         return err;
     }
@@ -135,7 +135,7 @@ merkle_err_t merkle_proof_init(merkle_proof_t *p, cipher_e c) {
 
 void merkle_proof_deinit(merkle_proof_t *p) {
     array_deinit(&p->hashes);
-    array_deinit(&p->pos);
+    array_deinit(&p->left_right);
 }
 
 merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
@@ -187,7 +187,7 @@ merkle_err_t merkle_proof(merkle_proof_t *p, merkle_t *m, merkle_hash_t hash) {
         }
         memcpy(p_hash, node, p->hash_width);
 
-        pos = array_push(&p->pos);
+        pos = array_push(&p->left_right);
         if (pos == NULL) {
             return MERKLE_ERROR;
         }
@@ -214,19 +214,19 @@ merkle_err_t merkle_proof_validate(merkle_proof_t *p, merkle_hash_t root,
     if (array_len(&p->hashes) < 1) {
         left_right = 0;
     } else {
-        pos = array_get(&p->pos, 0);
+        pos = array_get(&p->left_right, 0);
         left_right = *pos ? 0 : 1;
     }
     memcpy(result+(left_right*p->hash_width), hash, p->hash_width);
 
 
     for (int i = 0; i < array_len(&p->hashes); i++) {
-        pos = array_get(&p->pos, i);
+        pos = array_get(&p->left_right, i);
         memcpy(result+((*pos)*p->hash_width), array_get(&p->hashes, i), p->hash_width);
 
         left_right = 0;
         if (i < array_len(&p->hashes) - 1){
-            pos = array_get(&p->pos, i+1);
+            pos = array_get(&p->left_right, i+1);
             left_right = *pos ? 0 : 1;
         }
 

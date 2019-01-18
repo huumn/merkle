@@ -9,7 +9,7 @@
 #define MERKLE_INIT_LEVELS 16
 #define MERKLE_INIT_HASHES 16
 
-uint32_t get_hash_width(hash_e c) {
+static uint32_t get_hash_width(hash_e c) {
     #define HASH_WIDTHS(_name, _width) _width,
     uint32_t hash_widths[] = {
         HASH_CODEC( HASH_WIDTHS )
